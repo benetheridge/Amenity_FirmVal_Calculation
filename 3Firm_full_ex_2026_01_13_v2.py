@@ -133,63 +133,7 @@ def estimate_offer_distribution(M):
 
 
 # =============================================================================
-# STEP 3: FIND λ₁ TO MATCH EE FLOW LEVEL
-# =============================================================================
-
-def model_ee_rate(lambda1, V_e, f, g, delta, rho):
-    """
-    Compute model-implied EE transition rate.
-    
-    EE rate = λ₁ × Σ_j g_j(1-δ)(1-ρ) × Σ_{k≠j} f_k × Pr(k ≻ j)
-    
-    where Pr(k ≻ j) = exp(V_k) / (exp(V_k) + exp(V_j))
-    """
-    n_firms = len(g)
-    exp_V = np.exp(V_e)
-    
-    total = 0.0
-    for j in range(n_firms):
-        # Workers at firm j who don't get hit by exogenous shocks
-        base = g[j] * (1 - delta) * (1 - rho)
-        
-        # Probability of accepting an offer (weighted by offer distribution)
-        accept_prob = 0.0
-        for k in range(n_firms):
-            if k != j:
-                # Offer from k, compare to j
-                pr_accept = exp_V[k] / (exp_V[k] + exp_V[j])
-                accept_prob += f[k] * pr_accept
-        
-        total += base * accept_prob
-    
-    return lambda1 * total
-
-
-def find_lambda1(M, V_e, f, g, W, delta, rho):
-    """
-    Find λ₁ that matches observed EE transition rate.
-    """
-    # Observed EE rate
-    ee_flows = 0
-    for j in FIRMS:
-        for k in FIRMS:
-            if j != k:
-                ee_flows += M[j, k]
-    observed_ee_rate = ee_flows / W
-    
-    # Grid search for λ₁
-    def objective(lambda1):
-        model_rate = model_ee_rate(lambda1, V_e, f, g, delta, rho)
-        return (model_rate - observed_ee_rate) ** 2
-    
-    result = minimize_scalar(objective, bounds=(0.01, 0.99), method='bounded')
-    lambda1_star = result.x
-    
-    return lambda1_star, observed_ee_rate
-
-
-# =============================================================================
-# STEP 4: RECOVER TRUE VALUES
+# STEP 3: RECOVER TRUE VALUES
 # =============================================================================
 
 def recover_true_values(V_tilde, f, g, delta, rho):
